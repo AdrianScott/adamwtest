@@ -53,6 +53,14 @@ python sweep_train.py
 
 This launches a Weights & Biases sweep that compares both optimizers across different configurations.
 
+## Results
+
+### Sample Comparison Test
+
+![Sample Comparison](sample-comparison.png)
+
+View the full experiment result for this sweep on Weights & Biases: [AdamW-McGinley Experiments](https://wandb.ai/adriandoesai-adrian-does-a-i/adamw-cifar10?nw=nwuseradriandoesai)
+
 ## Project Structure
 
 - `custom_optimizer.py`: Implementation of CustomAdamW optimizer
