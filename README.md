@@ -18,6 +18,22 @@ The McGinley Dynamic indicator from technical analysis proposes adaptive smoothi
 - Beta statistics logging integration with Weights & Biases
 - Comprehensive sweep infrastructure for comparative analysis
 
+## Installation
+
+To install the required dependencies, run:
+
+```bash
+pip install -r requirements.txt
+```
+
+Or set up a virtual environment:
+
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+```
+
 ## Usage
 
 ### Basic Usage
