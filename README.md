@@ -75,7 +75,7 @@ This launches a Weights & Biases sweep that compares both optimizers across diff
 
 ![Sample Comparison](sample-comparison.png)
 
-View the full experiment result for this sweep on Weights & Biases: [AdamW-McGinley Experiments](https://wandb.ai/adriandoesai-adrian-does-a-i/adamw-cifar10?nw=nwuseradriandoesai)
+Full experiment results for this sweep on Weights & Biases are available; contact me for access.
 
 ## Project Structure
 
