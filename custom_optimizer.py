@@ -121,6 +121,9 @@ class CustomAdamW(Optimizer):
                     state['prev_grad'] = torch.zeros_like(p, memory_format=torch.preserve_format)
                     # Previous squared gradient for calculating dynamic beta
                     state['prev_grad_sq'] = torch.zeros_like(p, memory_format=torch.preserve_format)
+                    # Cumulative products of betas for bias correction with time-varying betas
+                    state['beta1_prod'] = torch.ones((), dtype=torch.float32, device=p.device)
+                    state['beta2_prod'] = torch.ones((), dtype=torch.float32, device=p.device)
                     if amsgrad:
                         # Maintains max of all exp. moving avg. of sq. grad. values
                         state['max_exp_avg_sq'] = torch.zeros_like(p, memory_format=torch.preserve_format)
@@ -169,38 +172,40 @@ class CustomAdamW(Optimizer):
                     
                     # Dynamic beta1 based on McGinley Dynamic formula
                     beta1_t = beta1 / (1 + grad_change**2)
-                    beta1_t = max(self.min_beta1, beta1_t.item())  # Ensure minimum value for stability
+                    beta1_t = max(self.min_beta1, float(beta1_t))  # Ensure minimum value for stability
                     
                     # Dynamic beta2 based on McGinley Dynamic formula
                     beta2_t = beta2 / (1 + grad_sq_change**2)
-                    beta2_t = max(self.min_beta2, beta2_t.item())  # Ensure minimum value for stability
+                    beta2_t = max(self.min_beta2, float(beta2_t))  # Ensure minimum value for stability
                 else:
                     # Use default betas for first step
                     beta1_t, beta2_t = beta1, beta2
-                
+
                 # Save current gradients for next iteration
                 self.state[params_with_grad[i]]['prev_grad'].copy_(grad)
                 self.state[params_with_grad[i]]['prev_grad_sq'].copy_(grad * grad)
-                
-                # Calculate bias corrections
-                bias_correction1 = 1 - (beta1_t ** step)
-                bias_correction2 = 1 - (beta2_t ** step)
-                
+
+                # Update cumulative beta products and calculate bias corrections
+                st = self.state[params_with_grad[i]]
+                st['beta1_prod'].mul_(beta1_t)
+                st['beta2_prod'].mul_(beta2_t)
+                bias_correction1 = 1.0 - st['beta1_prod'].item()
+                bias_correction2 = 1.0 - st['beta2_prod'].item()
+
                 # Update moments with dynamic betas
                 exp_avg.mul_(beta1_t).add_(grad, alpha=1 - beta1_t)
                 exp_avg_sq.mul_(beta2_t).addcmul_(grad, grad, value=1 - beta2_t)
-                
+
                 # Log beta statistics if enabled
                 if self.log_betas and i == 0:  # Only log for first parameter to avoid clutter
-                    if step % 100 == 0:  # Log periodically
-                        if step > 1:
-                            self.beta_stats['beta1_mean'].append(beta1_t)
-                            self.beta_stats['beta2_mean'].append(beta2_t)
-                            self.beta_stats['beta1_min'].append(beta1_t)
-                            self.beta_stats['beta2_min'].append(beta2_t)
-                            self.beta_stats['beta1_max'].append(beta1_t)
-                            self.beta_stats['beta2_max'].append(beta2_t)
-                            logging.info(f"Step {step}: beta1={beta1_t:.4f}, beta2={beta2_t:.4f}, grad_change={grad_change:.4f}")
+                    if step % 100 == 0 and step > 1:  # Log periodically
+                        self.beta_stats['beta1_mean'].append(beta1_t)
+                        self.beta_stats['beta2_mean'].append(beta2_t)
+                        self.beta_stats['beta1_min'].append(beta1_t)
+                        self.beta_stats['beta2_min'].append(beta2_t)
+                        self.beta_stats['beta1_max'].append(beta1_t)
+                        self.beta_stats['beta2_max'].append(beta2_t)
+                        logging.info(f"Step {step}: beta1={beta1_t:.4f}, beta2={beta2_t:.4f}")
                 
                 # Standard Adam-like update
                 if amsgrad:

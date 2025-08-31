@@ -48,8 +48,9 @@ def param_groups_weight_decay(model: nn.Module, weight_decay: float, exclude_bia
 class SGDW(SGD):
     """Decoupled weight decay for SGD."""
     def __init__(self, params, lr, momentum=0.0, weight_decay=0.0, nesterov=False):
+        # Use weight_decay=0 in base optimizer; apply decoupled WD manually per group
         super().__init__(params, lr=lr, momentum=momentum, weight_decay=0.0, nesterov=nesterov)
-        self.decoupled_wd = weight_decay
+        self.decoupled_wd = weight_decay  # fallback if groups don't specify
 
     @torch.no_grad()
     def step(self, closure=None):
@@ -58,10 +59,10 @@ class SGDW(SGD):
             with torch.enable_grad():
                 loss = closure()
 
-        # decoupled shrink
-        if self.decoupled_wd != 0.0:
-            for group in self.param_groups:
-                wd = self.decoupled_wd
+        # decoupled shrink (respect per-group weight_decay)
+        for group in self.param_groups:
+            wd = group.get("weight_decay", self.decoupled_wd)
+            if wd != 0.0:
                 lr = group["lr"]
                 for p in group["params"]:
                     if p.grad is None:
@@ -103,7 +104,7 @@ def accuracy(output, target, topk=(1,)):
 def train_one_epoch(model, loader, optimizer, scheduler, device, epoch, args):
     model.train()
     loss_meter, acc_meter = 0.0, 0.0
-    for images, targets in tqdm(loader, desc=f"Train e{epoch}", leave=False):
+    for i, (images, targets) in enumerate(tqdm(loader, desc=f"Train e{epoch}", leave=False)):
         images, targets = images.to(device, non_blocking=True), targets.to(device, non_blocking=True)
 
         optimizer.zero_grad(set_to_none=True)
@@ -112,18 +113,17 @@ def train_one_epoch(model, loader, optimizer, scheduler, device, epoch, args):
         loss.backward()
         optimizer.step()
 
+        # Step scheduler first to reflect current LR for this iteration
+        if scheduler is not None:
+            scheduler.step(epoch - 1 + (i + 1) / len(loader))
+
         if args.wd_schedule == "cosine":
-            # Scale weight decay in lockstep with LR cosine (optional variant)
+            # Scale weight decay in lockstep with current LR (after scheduler.step)
             for group in optimizer.param_groups:
                 if "initial_wd" in group:
-                    # group["lr"] already updated *after* step for CAWR, so adjust wd here
                     base = group["initial_wd"]
-                    # normalize by initial LR to keep proportion similar
                     scale = group["lr"] / group.get("initial_lr", group["lr"])
                     group["weight_decay"] = base * float(scale)
-
-        if scheduler is not None:
-            scheduler.step(epoch + (loader._index + 1) / len(loader) if hasattr(loader, "_index") else None)
 
         with torch.no_grad():
             acc1, = accuracy(logits, targets, topk=(1,))
@@ -395,5 +395,5 @@ if __name__ == "__main__":
     print(f"Created sweep with ID: {sweep_id}")
 
     # Run agent
-    wandb.agent(sweep_id, function=train_model, count=15)  # Run all 15 combinations (3 weight_decays × 5 seeds)
-
+    # Grid size: 2 (opt) × 2 (wd) × 2 (seed) × 2 (min_beta1) = 16
+    wandb.agent(sweep_id, function=train_model, count=16)

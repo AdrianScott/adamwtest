@@ -21,10 +21,10 @@ wheels/
 *.egg
 
 # This project
-# Ignore all markdown files except README.md
-*.md
-!README.md
 temp/
+*.code-workspace
+adamw*.md
+custom*.md
 
 # Virtual Environment
 venv/
