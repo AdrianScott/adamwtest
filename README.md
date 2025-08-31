@@ -34,6 +34,12 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
+For exact versions used in our environment (Torch 2.7.x), use the pinned set:
+
+```bash
+pip install -r requirements-pinned.txt
+```
+
 ## Usage
 
 ### Basic Usage
@@ -68,6 +74,15 @@ python sweep_train.py
 ```
 
 This launches a Weights & Biases sweep that compares both optimizers across different configurations.
+
+## Testing
+
+Install pytest and run the unit tests:
+
+```bash
+pip install pytest
+PYTHONPATH=. pytest -q
+```
 
 ## Results
 

@@ -1,0 +1,8 @@
+# Pinned versions aligned with torchaudio 2.7.x (common env)
+# Adjust for CUDA/toolchain as needed.
+
+torch==2.7.1
+torchvision==0.22.1
+numpy==1.26.4
+tqdm==4.66.4
+wandb==0.17.5

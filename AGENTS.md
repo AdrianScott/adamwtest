@@ -32,10 +32,12 @@ PY`
 - Prefer explicit logging via `logging` and W&B metrics; avoid print in library code.
 
 ## Testing Guidelines
-- No pytest suite yet. For changes, run a short sweep or reduce runtime:
+- Run tests locally with pytest:
+  - `pip install pytest`
+  - `PYTHONPATH=. pytest -q`
+- For quick functional checks without tests, reduce runtime:
   - Edit `num_epochs` and `count` in `sweep_train.py` (e.g., `num_epochs=1`, `count=1`).
   - Verify outputs in `runs/<run>/log.csv` and W&B charts.
-- Add unit tests when adding pure functions (e.g., beta adaptation helpers) under `tests/` with pytest.
 
 ## Commit & Pull Request Guidelines
 - Commits: short imperative subject (<= 50 chars), details in body when needed.
@@ -49,3 +51,5 @@ PY`
 ## Security & Configuration Tips
 - Do not commit secrets; use `WANDB_API_KEY` env var.
 - Large artifacts (`runs/`, `wandb/`, datasets) should remain untracked; keep `.gitignore` updated.
+- Use `requirements-pinned.txt` (Torch 2.7.x) for reproducible installs when sharing results.
+  - If you already have torchaudio installed, align versions (e.g., torch/vision/audio 2.7.1/0.22.1/2.7.1) or uninstall torchaudio.

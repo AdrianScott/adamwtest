@@ -48,9 +48,13 @@ def param_groups_weight_decay(model: nn.Module, weight_decay: float, exclude_bia
 class SGDW(SGD):
     """Decoupled weight decay for SGD."""
     def __init__(self, params, lr, momentum=0.0, weight_decay=0.0, nesterov=False):
-        # Use weight_decay=0 in base optimizer; apply decoupled WD manually per group
+        # Use weight_decay=0 in base optimizer; apply decoupled WD manually per group.
+        # Preserve per-group intent in a separate key to avoid coupled L2 in base SGD.
         super().__init__(params, lr=lr, momentum=momentum, weight_decay=0.0, nesterov=nesterov)
         self.decoupled_wd = weight_decay  # fallback if groups don't specify
+        for g in self.param_groups:
+            g["decoupled_weight_decay"] = g.get("weight_decay", self.decoupled_wd)
+            g["weight_decay"] = 0.0
 
     @torch.no_grad()
     def step(self, closure=None):
@@ -61,7 +65,7 @@ class SGDW(SGD):
 
         # decoupled shrink (respect per-group weight_decay)
         for group in self.param_groups:
-            wd = group.get("weight_decay", self.decoupled_wd)
+            wd = group.get("decoupled_weight_decay", self.decoupled_wd)
             if wd != 0.0:
                 lr = group["lr"]
                 for p in group["params"]:
